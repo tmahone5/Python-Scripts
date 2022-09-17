@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+#### goal is to comment this scripts line by line to get better understanding of python and use in intervierview#####
 
 # boto3 is AWS library
 import boto3
