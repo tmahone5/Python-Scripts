@@ -1,26 +1,45 @@
 #!/usr/bin/python3
 
+#aws python lib
 import boto3
+
+#regex 
+#https://docs.python.org/3/library/re.html
 import re
+
+#to make api calls
 import requests
+
+#store api calls in a json dump file
 import json
+
+#os level commands
 import os
 
+#defined variables
 non_mrktplce_dev=4
 non_mrktplce_prod=5
 mrktplce_dev=4
 mrktplce_impl=5
 mrktplce_prod=2
 
+#pulling value from secrets manager in aws and storing it in a variable
 secret_id = 'arn:aws:secretsmanager:us-east-1:842420567215:secret:CloudTamer_API_Key-7iPuKK'
+#using OS library to create an api token
 api_token = os.environ['ct_api_token']
+#set var for account number
 oc_account_num = '842420567215'
+#set var for role
 oc_iam_role = 'ct-gss-ado-admin'
+#set var for url
 ct_API_URL = "https://cloudtamer.cms.gov/api"
+#set var account files
 account_files=['/ITOPS/ssm-patching/marketplace/accounts']
 #account_files=['/ITOPS/ssm-patching/marketplace/accounts','/ITOPS/ssm-patching/non-marketplace/accounts']
 
+#top level for loop evaluating a list called "account files"
 for account_file in account_files:
+    #prints out each account number in the list above
     print(account_file,'\n')
     oc_cred_response=requests.post(url="{API_URL}/v3/temporary-credentials".format(API_URL=ct_API_URL), data=json.dumps({
                 "account_number": oc_account_num,
@@ -32,11 +51,13 @@ for account_file in account_files:
         aws_session_token=oc_cred_response.json()['data']['session_token']
         )
 
+    #defining a list of account numbers and putting them in a list
     accounts_list = ssm.get_parameter(
                 Name="{file}".format(file=account_file)
             )['Parameter']['Value'].split(',')
     #accounts_list=['656395180286']
     for account_num in accounts_list:
+        #creating variable account_response using the json and request libraries. Will store the filtered output of API call being made
         account_response=requests.get(url="{API_URL}/v3/account/by-account-number/{cloudtamerAccountNumber}".format(API_URL=ct_API_URL,cloudtamerAccountNumber=account_num),headers={"Authorization":"Bearer {API_TOKEN}".format(API_TOKEN=api_token)})
         if account_response.status_code != 200:
             print(account_num,":HTTP Status Code: ",account_response.status_code,",",account_response.json()['message'])
@@ -47,7 +68,7 @@ for account_file in account_files:
             cred_response=requests.post(url="{API_URL}/v3/temporary-credentials".format(API_URL=ct_API_URL), data=json.dumps({
                 "account_number": "{x}".format(x=account_num),
                 "iam_role_name": iam_role_name
-                }),headers={"Authorization":"Bearer {API_TOKEN}".format(API_TOKEN=api_token)})
+                }),headers={"Authorization":"Bearer {API_TOKEN}".format(API_TOKEN=api_token)}
             if cred_response.status_code != 200:
                 print(account_num,":HTTP Status Code: ",cred_response.status_code,",",cred_response.json()['message'])
             elif cred_response.status_code == 200:
@@ -55,7 +76,7 @@ for account_file in account_files:
                 aws_access_key_id=cred_response.json()['data']['access_key'],
                 aws_secret_access_key=cred_response.json()['data']['secret_access_key'],
                 aws_session_token=cred_response.json()['data']['session_token'])
-
+  # see https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ssm.html?highlight=ssm#SSM.Client.describe_maintenance_windows
                 ssm_response = ssm.describe_maintenance_windows(
                     Filters= [ { 'Key':'Enabled', 'Values':['True',] }, ],
                     MaxResults=50,
